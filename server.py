@@ -1,6 +1,8 @@
 import socket
 import threading
 import json
+import time
+import random
 
 objects = []
 
@@ -25,23 +27,37 @@ def HandleClients(conn, addr):
             conn.close()
             break
 
-def main():
+def send():
+    data = json.dumps(objects).encode() + b"\n"
+    for client in clients.copy():
+        try:
+            client.sendall(data)
+        except:
+            print(f"{client} client removed")
+            clients.remove(client)
+
+def ServerConnection():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind((ip, port))
     server.listen()
     print(f"Server started on port {port}")
-
-    def send():
-        data = json.dumps(objects).encode() + b"\n"
-        for client in clients.copy():
-            client.sendall(data)
 
     while True:
         conn, addr = server.accept()
         print(f"{addr} connected")
         clients.append(conn)
         send()
-        threading.Thread(target=HandleClients, args=(conn, addr)).start()
+        threading.Thread(target=HandleClients, args=(conn, addr), daemon=True).start()
+
+def Main():
+    while True:
+        time.sleep(5)
+        for object in objects:
+            object["position"] = (random.randint(1, 500), random.randint(1, 500))
+        send()
+        print(objects)
+
 
 if __name__ == "__main__":
-    main()
+    threading.Thread(target=ServerConnection, daemon=True).start()
+    Main()
